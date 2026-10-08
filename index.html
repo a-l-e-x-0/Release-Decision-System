@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Release Decision System</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="script.js" defer></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="page-header">
+        <div>
+          <p class="overline">Release operations</p>
+          <h1>Release decision</h1>
+          <p class="page-intro">Review ticket status and release readiness.</p>
+        </div>
+        <div id="release-decision" class="decision" aria-live="polite"></div>
+      </header>
+
+      <section class="summary-section" aria-labelledby="summary-heading">
+        <div class="section-heading">
+          <h2 id="summary-heading">Release analysis</h2>
+          <p id="ticket-count" class="muted"></p>
+        </div>
+        <div id="summary-grid" class="summary-grid"></div>
+      </section>
+
+      <div class="workspace">
+        <section class="ticket-panel" aria-labelledby="tickets-heading">
+          <h2 id="tickets-heading">Tickets</h2>
+          <form id="ticket-search" class="search-form">
+            <label for="ticket-id">Search by ticket ID</label>
+            <div class="search-controls">
+              <input id="ticket-id" type="search" inputmode="numeric" placeholder="e.g. 104" />
+              <button type="submit">Search</button>
+            </div>
+            <p id="search-message" class="search-message" aria-live="polite"></p>
+          </form>
+          <div id="ticket-list" class="ticket-list"></div>
+        </section>
+
+        <section
+          id="ticket-analysis"
+          class="analysis-panel"
+          aria-label="Selected ticket analysis"
+          aria-live="polite"
+        ></section>
+      </div>
+
+      <footer>Release totals are calculated from the full ticket list.</footer>
+    </main>
+  </body>
+</html>
