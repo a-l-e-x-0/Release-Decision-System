@@ -21,6 +21,8 @@ type Ticket = {
 type ClassifiedTicket = Ticket & { classification: TicketClassification };
 type TicketCounters = Record<TicketClassification, number>;
 
+const storageKey = "releaseDecisionTickets";
+
 const tickets: Ticket[] = [
   {
     id: 101,
@@ -282,9 +284,9 @@ function createReport(tickets: Ticket[]) {
 console.log(createReport(tickets));
 
 //Display and interaction////////////////////////////////
-const pageTickets = classifyTickets(tickets);
-const pageSummary = calculateCountersAndHours(pageTickets);
-const releaseDecision = decideRelease(
+let pageTickets = classifyTickets(tickets);
+let pageSummary = calculateCountersAndHours(pageTickets);
+let releaseDecision = decideRelease(
   pageSummary.counters,
   pageSummary.activeHours,
 );
@@ -304,6 +306,115 @@ const searchMessage = requireElement<HTMLParagraphElement>("#search-message");
 const ticketCount = requireElement<HTMLParagraphElement>("#ticket-count");
 const summaryGrid = requireElement<HTMLDivElement>("#summary-grid");
 const decisionElement = requireElement<HTMLDivElement>("#release-decision");
+
+function isTicketArray(value: unknown): value is Ticket[] {
+  if (!Array.isArray(value)) return false;
+
+  return value.every((ticket: unknown) => {
+    if (typeof ticket !== "object" || ticket === null) return false;
+
+    const item = ticket as Record<string, unknown>;
+
+    return (
+      Number.isInteger(item.id) &&
+      (item.id as number) > 0 &&
+      typeof item.title === "string" &&
+      item.title.trim().length > 0 &&
+      Number.isInteger(item.severity) &&
+      (item.severity as number) >= 1 &&
+      (item.severity as number) <= 5 &&
+      ["open", "testing", "done"].includes(String(item.status)) &&
+      (typeof item.owner === "string" || item.owner === null) &&
+      typeof item.remainingHours === "number" &&
+      Number.isFinite(item.remainingHours) &&
+      item.remainingHours >= 0 &&
+      typeof item.customerVip === "boolean" &&
+      typeof item.blocked === "boolean"
+    );
+  });
+}
+
+try {
+  const savedTickets = localStorage.getItem(storageKey);
+
+  if (savedTickets !== null) {
+    const parsed: unknown = JSON.parse(savedTickets);
+
+    if (isTicketArray(parsed)) {
+      tickets.splice(0, tickets.length, ...parsed);
+    } else {
+      console.error("Saved tickets were invalid. Using default tickets.");
+    }
+  } else {
+    localStorage.setItem(storageKey, JSON.stringify(tickets));
+  }
+} catch (error) {
+  console.error("Could not load saved tickets:", error);
+}
+
+function saveTickets() {
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(tickets));
+    return true;
+  } catch (error) {
+    console.error("Could not save tickets:", error);
+    alert("Tickets could not be saved in this browser.");
+    return false;
+  }
+}
+
+const formContainer = document.createElement("div");
+formContainer.id = "ticket-form-container";
+ticketList.before(formContainer);
+
+formContainer.innerHTML = `
+  <h3 id="editor-heading">Add ticket</h3>
+  <form id="ticket-editor">
+    <label for="edit-title">Title</label>
+    <input id="edit-title" name="title" required>
+
+    <label for="edit-severity">Severity (1-5)</label>
+    <input id="edit-severity" name="severity" type="number" min="1" max="5" step="1" required>
+
+    <label for="edit-status">Status</label>
+    <select id="edit-status" name="status">
+      <option value="open">Open</option>
+      <option value="testing">Testing</option>
+      <option value="done">Done</option>
+    </select>
+
+    <label for="edit-owner">Owner</label>
+    <input id="edit-owner" name="owner" placeholder="Leave empty if unassigned">
+
+    <label for="edit-hours">Remaining hours</label>
+    <input id="edit-hours" name="remainingHours" type="number" min="0" step="any" required>
+
+    <label class="checkbox-label">
+      <input name="customerVip" type="checkbox">
+      VIP customer
+    </label>
+
+    <label class="checkbox-label">
+      <input name="blocked" type="checkbox">
+      Blocked
+    </label>
+
+    <div class="form-buttons">
+      <button type="submit" id="save-ticket">Add ticket</button>
+      <button type="button" id="cancel-edit" hidden>Cancel</button>
+    </div>
+
+    <p id="editor-message" aria-live="polite"></p>
+  </form>
+`;
+
+const ticketEditor = requireElement<HTMLFormElement>("#ticket-editor");
+const editorHeading = requireElement<HTMLHeadingElement>("#editor-heading");
+const editorMessage = requireElement<HTMLParagraphElement>("#editor-message");
+const saveButton = requireElement<HTMLButtonElement>("#save-ticket");
+const cancelButton = requireElement<HTMLButtonElement>("#cancel-edit");
+
+let selectedTicketId: number | null = tickets[0]?.id ?? null;
 
 function showSummary() {
   const counts = pageSummary.counters;
@@ -335,13 +446,17 @@ function showTickets(selectedId?: number) {
   ticketList.innerHTML = pageTickets
     .map(
       (ticket) => `
-    <button class="ticket ${ticket.id === selectedId ? "selected" : ""}" data-id="${ticket.id}">
-      <span>
-        <strong>${ticket.title}</strong>
-        <small>#${ticket.id} · ${ticket.status}</small>
-      </span>
-      <span class="tag">${ticket.classification}</span>
-    </button>`,
+    <div class="ticket-row">
+      <button class="ticket ${ticket.id === selectedId ? "selected" : ""}" data-id="${ticket.id}" type="button">
+        <span>
+          <strong>${ticket.title}</strong>
+          <small>#${ticket.id} · ${ticket.status}</small>
+        </span>
+        <span class="tag">${ticket.classification}</span>
+      </button>
+      <button type="button" class="action-button" data-edit-id="${ticket.id}">Edit</button>
+      <button type="button" class="action-button remove-button" data-remove-id="${ticket.id}">Remove</button>
+    </div>`,
     )
     .join("");
 }
@@ -385,11 +500,192 @@ function showTicketAnalysis(ticket: ClassifiedTicket) {
 }
 
 function selectTicket(ticket: ClassifiedTicket) {
+  selectedTicketId = ticket.id;
   showTickets(ticket.id);
   showTicketAnalysis(ticket);
   searchMessage.textContent = "";
   searchInput.removeAttribute("aria-invalid");
 }
+
+function refreshPage() {
+  pageTickets = classifyTickets(tickets);
+  pageSummary = calculateCountersAndHours(pageTickets);
+  releaseDecision = decideRelease(
+    pageSummary.counters,
+    pageSummary.activeHours,
+  );
+
+  showSummary();
+  showTickets(selectedTicketId ?? undefined);
+
+  const selected = findTicketById(pageTickets, selectedTicketId ?? -1);
+
+  if (selected) {
+    showTicketAnalysis(selected);
+  } else if (pageTickets.length > 0) {
+    selectedTicketId = pageTickets[0].id;
+    showTicketAnalysis(pageTickets[0]);
+  } else {
+    selectedTicketId = null;
+    analysis.innerHTML = "<p>No tickets available.</p>";
+  }
+}
+
+function resetForm() {
+  ticketEditor.reset();
+  delete ticketEditor.dataset.editingId;
+  editorHeading.textContent = "Add ticket";
+  saveButton.textContent = "Add ticket";
+  cancelButton.hidden = true;
+  editorMessage.textContent = "";
+}
+
+function editTicket(id: number) {
+  const ticket = findTicketById(tickets, id);
+  if (!ticket) return;
+
+  selectedTicketId = id;
+
+  requireElement<HTMLInputElement>("#edit-title").value = ticket.title;
+  requireElement<HTMLInputElement>("#edit-severity").value = String(
+    ticket.severity,
+  );
+  requireElement<HTMLSelectElement>("#edit-status").value = ticket.status;
+  requireElement<HTMLInputElement>("#edit-owner").value = ticket.owner ?? "";
+  requireElement<HTMLInputElement>("#edit-hours").value = String(
+    ticket.remainingHours,
+  );
+
+  requireElement<HTMLInputElement>('[name="customerVip"]').checked =
+    ticket.customerVip;
+  requireElement<HTMLInputElement>('[name="blocked"]').checked = ticket.blocked;
+
+  ticketEditor.dataset.editingId = String(id);
+  editorHeading.textContent = `Edit ticket #${id}`;
+  saveButton.textContent = "Save changes";
+  cancelButton.hidden = false;
+  editorMessage.textContent = "";
+
+  refreshPage();
+  formContainer.scrollIntoView({ behavior: "smooth" });
+}
+
+ticketEditor.addEventListener("submit", (event) => {
+  event.preventDefault();
+
+  const formData = new FormData(ticketEditor);
+  const title = String(formData.get("title")).trim();
+  const severity = Number(formData.get("severity"));
+  const status = String(formData.get("status"));
+  const owner = String(formData.get("owner")).trim();
+  const remainingHours = Number(formData.get("remainingHours"));
+
+  if (
+    !title ||
+    !Number.isInteger(severity) ||
+    severity < 1 ||
+    severity > 5 ||
+    !["open", "testing", "done"].includes(status) ||
+    !Number.isFinite(remainingHours) ||
+    remainingHours < 0
+  ) {
+    editorMessage.textContent = "Enter valid ticket details.";
+    return;
+  }
+
+  const editingId = ticketEditor.dataset.editingId;
+
+  if (editingId !== undefined) {
+    const ticket = findTicketById(tickets, Number(editingId));
+
+    if (!ticket) {
+      editorMessage.textContent = "Ticket not found.";
+      return;
+    }
+
+    const oldTicket = { ...ticket };
+
+    ticket.title = title;
+    ticket.severity = severity;
+    ticket.status = status as TicketStatus;
+    ticket.owner = owner || null;
+    ticket.remainingHours = remainingHours;
+    ticket.customerVip = formData.has("customerVip");
+    ticket.blocked = formData.has("blocked");
+
+    if (!saveTickets()) {
+      Object.assign(ticket, oldTicket);
+      return;
+    }
+
+    selectedTicketId = ticket.id;
+  } else {
+    const newId = Math.max(100, ...tickets.map((ticket) => ticket.id)) + 1;
+
+    tickets.push({
+      id: newId,
+      title,
+      severity,
+      status: status as TicketStatus,
+      owner: owner || null,
+      remainingHours,
+      customerVip: formData.has("customerVip"),
+      blocked: formData.has("blocked"),
+    });
+
+    if (!saveTickets()) {
+      tickets.pop();
+      return;
+    }
+
+    selectedTicketId = newId;
+  }
+
+  resetForm();
+  refreshPage();
+});
+
+cancelButton.addEventListener("click", resetForm);
+
+ticketList.addEventListener("click", (event) => {
+  if (!(event.target instanceof Element)) return;
+
+  const editButton = event.target.closest<HTMLButtonElement>("[data-edit-id]");
+  const removeButton =
+    event.target.closest<HTMLButtonElement>("[data-remove-id]");
+
+  if (editButton) {
+    editTicket(Number(editButton.dataset.editId));
+    return;
+  }
+
+  if (removeButton) {
+    const id = Number(removeButton.dataset.removeId);
+    const ticket = findTicketById(tickets, id);
+
+    if (!ticket || !confirm(`Remove ticket #${id}: ${ticket.title}?`)) {
+      return;
+    }
+
+    const index = tickets.findIndex((item) => item.id === id);
+    const [removedTicket] = tickets.splice(index, 1);
+
+    if (!saveTickets()) {
+      tickets.splice(index, 0, removedTicket);
+      return;
+    }
+
+    if (selectedTicketId === id) {
+      selectedTicketId = tickets[0]?.id ?? null;
+    }
+
+    if (ticketEditor.dataset.editingId === String(id)) {
+      resetForm();
+    }
+
+    refreshPage();
+  }
+});
 
 ticketList.addEventListener("click", (event) => {
   if (!(event.target instanceof Element)) return;
@@ -417,4 +713,3 @@ searchForm.addEventListener("submit", (event) => {
 showSummary();
 showTickets();
 showTicketAnalysis(pageTickets[0]);
-//

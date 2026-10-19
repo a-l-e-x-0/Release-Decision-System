@@ -1,3 +1,4 @@
+
 * {
   box-sizing: border-box;
 }
@@ -16,9 +17,7 @@ body {
 }
 
 .page-header,
-.section-heading,
-.ticket,
-.search-controls {
+.section-heading {
   display: flex;
   justify-content: space-between;
   gap: 10px;
@@ -45,6 +44,11 @@ body {
   background: #f1f5f2;
 }
 
+.summary-card span {
+  display: block;
+  color: #68756e;
+}
+
 .workspace {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -55,23 +59,47 @@ button {
   cursor: pointer;
 }
 
+button,
+input,
+select {
+  font: inherit;
+}
+
+.search-controls {
+  display: flex;
+  gap: 10px;
+}
+
 .search-controls input {
   width: 100%;
   min-width: 0;
+  padding: 8px;
 }
 
-.search-controls button {
+.search-controls button,
+#ticket-editor button {
+  padding: 8px 12px;
   color: white;
   background: #168064;
   border: none;
 }
 
-.ticket {
-  width: 100%;
+.ticket-row {
+  display: flex;
   align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid #ddd;
+}
+
+.ticket {
+  display: flex;
+  flex: 1;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
   padding: 10px 0;
   border: none;
-  border-bottom: 1px solid #ddd;
   background: white;
   text-align: left;
 }
@@ -81,14 +109,71 @@ button {
   background: #e5f3ed;
 }
 
-.ticket small,
-.summary-card span {
+.ticket small {
   display: block;
+  margin-top: 4px;
   color: #68756e;
 }
 
 .tag {
   font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.action-button {
+  padding: 6px 8px;
+  border: none;
+  background: #168064;
+  color: white;
+}
+
+.remove-button {
+  background: #bd4148;
+}
+
+#ticket-form-container {
+  padding: 10px 0 15px;
+  border-bottom: 1px solid #ddd;
+}
+
+#ticket-editor label {
+  display: block;
+  margin: 10px 0 5px;
+}
+
+#ticket-editor input:not([type="checkbox"]),
+#ticket-editor select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  background: white;
+}
+
+#ticket-editor .checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.form-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+#ticket-editor #cancel-edit {
+  background: #68756e;
+}
+
+#editor-message,
+.search-message {
+  color: #bd4148;
+}
+
+.decision {
+  align-self: center;
+  padding: 10px;
+  font-weight: bold;
 }
 
 .decision-block,
@@ -112,6 +197,7 @@ button {
 dl {
   display: grid;
   grid-template-columns: 1fr auto;
+  gap: 10px;
 }
 
 dd {
@@ -132,5 +218,19 @@ footer {
 
   .summary-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .page-header {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 450px) {
+  .ticket-row {
+    flex-wrap: wrap;
+  }
+
+  .ticket-row .ticket {
+    flex-basis: 100%;
   }
 }
