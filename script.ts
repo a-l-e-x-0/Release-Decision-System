@@ -417,3 +417,4 @@ searchForm.addEventListener("submit", (event) => {
 showSummary();
 showTickets();
 showTicketAnalysis(pageTickets[0]);
+//
