@@ -9,12 +9,22 @@
   </head>
   <body>
     <main class="shell">
-      <header class="page-header">
+      <header class="pageHeader">
         <div>
           <h1>Release decision</h1>
         </div>
       </header>
-      <footer>Release totals are calculated from the full ticket list.</footer>
+      <section id="summary"></section>
+      <input
+        id="searchInput"
+        type="search"
+        placeholder="Search by ID (e.g. 101)"
+      />
+      <section id="ticketList"></section>
+
+      <footer>
+        (footer) Release totals are calculated from the full ticket list.
+      </footer>
     </main>
   </body>
 </html>

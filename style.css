@@ -4,6 +4,10 @@
   --color-sage: #bdc4a7;
   --color-graphite: #2f2f2f;
   --color-teal-muted: #92b4a7;
+  --badge-active: #a3d9a5;
+  --badge-release-blocker: #ef9a9a;
+  --badge-priority: #f4d35e;
+  --badge-unassigned: #9cc9e8;
 }
 
 * {
@@ -12,6 +16,94 @@
 
 body {
   margin: 0;
+  min-height: 100vh;
   color: var(--color-cream);
   background: var(--color-graphite);
+}
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+footer {
+  margin-top: auto;
+  padding-top: 24px;
+  font-size: 0.85rem;
+  text-align: center;
+  color: var(--color-sage);
+}
+
+#summary {
+  padding: 16px;
+  border: 1px solid var(--color-sage);
+  border-radius: 8px;
+}
+
+#summary h2 {
+  margin: 0 0 12px;
+  color: var(--color-cream);
+}
+
+#summary p {
+  margin: 4px 0;
+}
+
+#ticketList {
+  margin-top: 16px;
+  display: grid;
+  gap: 8px;
+}
+
+.ticket {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  justify-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--color-sage);
+  border-radius: 8px;
+}
+
+.badge {
+  width: fit-content;
+  font-size: 0.8rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: var(--color-graphite);
+  background: var(--color-sage);
+}
+
+.ticket--release_blocker .badge {
+  background: var(--badge-release-blocker);
+}
+
+.ticket--priority .badge {
+  background: var(--badge-priority);
+}
+
+.ticket--active .badge {
+  background: var(--badge-active);
+}
+
+.ticket--unassigned .badge {
+  background: var(--badge-unassigned);
+}
+
+.ticket--done {
+  opacity: 0.6;
+}
+
+#searchInput {
+  width: 100%;
+  margin-top: 16px;
+  padding: 10px;
+  border: 1px solid var(--color-sage);
+  border-radius: 8px;
+  color: var(--color-cream);
+  background: transparent;
 }

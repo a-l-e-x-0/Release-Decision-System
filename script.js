@@ -224,29 +224,96 @@ function createReport(tickets) {
 }
 
 //////////////////////////////////////////////////////////////////////////////
-console.log("TESTING");
-console.log(classifyTickets(tickets));
-console.log("");
-console.log("FIND TICKETS:");
-console.log(findTicketById(tickets, 102));
-console.log("");
-console.log("ATTENTION:");
-console.log(getAttentionTickets(classifyTickets(tickets)));
-console.log("");
-console.log("REPORT REPRESENTATION:");
-console.log(toReportTickets(classifyTickets(tickets)));
-console.log("");
-console.log("COUNTERS AND HOURS:");
-console.log(calculateCountersAndHours(classifyTickets(tickets)));
-console.log("");
-console.log("DECIDE RELEASE:");
-const { counters, activeHours } = calculateCountersAndHours(
-  classifyTickets(tickets),
-);
-console.log(decideRelease(counters, activeHours));
-console.log("");
-console.log("SUMMARY:");
-console.log(createSummary(classifyTickets(tickets)));
-console.log("");
-console.log("FINAL REPORT:");
-console.log(createReport(tickets));
+// function testFunctions() {
+//   console.log("TESTING");
+//   console.log(classifyTickets(tickets));
+//   console.log("");
+//   console.log("FIND TICKETS:");
+//   console.log(findTicketById(tickets, 102));
+//   console.log("");
+//   console.log("ATTENTION:");
+//   console.log(getAttentionTickets(classifyTickets(tickets)));
+//   console.log("");
+//   console.log("REPORT REPRESENTATION:");
+//   console.log(toReportTickets(classifyTickets(tickets)));
+//   console.log("");
+//   console.log("COUNTERS AND HOURS:");
+//   console.log(calculateCountersAndHours(classifyTickets(tickets)));
+//   console.log("");
+//   console.log("DECIDE RELEASE:");
+//   const { counters, activeHours } = calculateCountersAndHours(
+//     classifyTickets(tickets),
+//   );
+//   console.log(decideRelease(counters, activeHours));
+//   console.log("");
+//   console.log("SUMMARY:");
+//   console.log(createSummary(classifyTickets(tickets)));
+//   console.log("");
+//   console.log("FINAL REPORT:");
+//   console.log(createReport(tickets));
+// }
+// testFunctions();
+
+// Everything below this is for DOM manipulation and such
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+
+function renderSummary(summary) {
+  document.querySelector("#summary").innerHTML = `
+    <h2> Decision: ${summary.decision}</h2>
+    <p>Blockers: ${summary.RELEASE_BLOCKER}</p>
+    <p>Priority: ${summary.PRIORITY}</p>
+    <p>Unassigned: ${summary.UNASSIGNED}</p>
+    <p>Active: ${summary.ACTIVE}</p>
+    <p>Done: ${summary.DONE}</p>
+    <p>Hours left: ${summary.activeHours}</p>
+  `;
+}
+
+function renderTickets(tickets) {
+  const container = document.querySelector("#ticketList");
+
+  if (tickets.length === 0) {
+    container.innerHTML = "<p>No tickets found.</p>";
+    return;
+  }
+
+  container.innerHTML = tickets
+    .map(
+      (t) => `
+      <article class="ticket ticket--${t.classification.toLowerCase()}">
+        <strong>#${t.id} ${t.title}</strong>
+        <span>${t.owner ?? "Unassigned"}</span>
+        <span class="badge">${t.classification}</span>
+      </article>`,
+    )
+    .join("");
+}
+
+function setupSearch() {
+  const input = document.querySelector("#searchInput");
+
+  input.addEventListener("input", () => {
+    const all = classifyTickets(tickets);
+    const query = input.value.trim();
+
+    if (query === "") {
+      renderTickets(all);
+      return;
+    }
+
+    const ticket = findTicketById(all, Number(query));
+    renderTickets(ticket ? [ticket] : []);
+  });
+}
+
+function init() {
+  renderSummary(createReport(tickets).summary);
+  renderTickets(classifyTickets(tickets));
+  setupSearch();
+}
+init();
+
+//////////////////////////////////////////////////////////////////////////////
