@@ -1,4 +1,4 @@
-const tickets = [
+const defaultTickets = [
   {
     id: 101,
     title: "Login outage",
@@ -260,6 +260,23 @@ function createReport(tickets) {
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 
+const STORAGE_KEY = "tickets";
+let tickets = loadTickets();
+
+function loadTickets() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch {}
+  const fresh = structuredClone(defaultTickets);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(fresh));
+  return fresh;
+}
+
+function saveTickets() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets));
+}
+
 function renderSummary(summary) {
   document.querySelector("#summary").innerHTML = `
     <h2> Decision: ${summary.decision}</h2>
@@ -284,36 +301,151 @@ function renderTickets(tickets) {
     .map(
       (t) => `
       <article class="ticket ticket--${t.classification.toLowerCase()}">
-        <strong>#${t.id} ${t.title}</strong>
-        <span>${t.owner ?? "Unassigned"}</span>
-        <span class="badge">${t.classification}</span>
+        <div class="ticketMain">
+            <strong>#${t.id} ${t.title}</strong>
+            <span class="badge">${t.classification}</span>
+        </div>
+        <div class="ticketMeta">
+            <span>Owner: ${t.owner ?? "Unassigned"}</span>
+            <span>Severity: ${t.severity}</span>
+            <span>Status: ${t.status}</span>
+            <span>Hours: ${t.remainingHours}</span>
+            <span>VIP: ${t.customerVip ? "Yes" : "No"}</span>
+            <span>Blocked: ${t.blocked ? "Yes" : "No"}</span>
+        </div>
+        <div class="ticketActions">
+            <button data-action="edit" data-id="${t.id}">Edit</button>
+            <button data-action="delete" data-id="${t.id}">Delete</button>
+        </div>
       </article>`,
     )
     .join("");
 }
 
+function applySearch() {
+  const all = classifyTickets(tickets);
+  const query = document.querySelector("#searchInput").value.trim();
+  if (query === "") return renderTickets(all);
+  const ticket = findTicketById(all, Number(query));
+  renderTickets(ticket ? [ticket] : []);
+}
+
 function setupSearch() {
-  const input = document.querySelector("#searchInput");
+  document.querySelector("#searchInput").addEventListener("input", applySearch);
+}
 
-  input.addEventListener("input", () => {
-    const all = classifyTickets(tickets);
-    const query = input.value.trim();
+function refresh() {
+  renderSummary(createReport(tickets).summary);
+  applySearch();
+}
 
-    if (query === "") {
-      renderTickets(all);
-      return;
+//////////////////////////////////////////////////////////////////////////////
+function clearForm() {
+  document.querySelector("#ticketForm").reset();
+  document.querySelector("#idInput").value = "";
+  document.querySelector("#ticketForm button[type=submit]").textContent =
+    "Save ticket";
+}
+
+function getNextId() {
+  let highest = 0;
+  for (const t of tickets) {
+    if (t.id > highest) {
+      highest = t.id;
     }
+  }
+  return highest + 1;
+}
 
-    const ticket = findTicketById(all, Number(query));
-    renderTickets(ticket ? [ticket] : []);
+function saveFromForm() {
+  const id = Number(document.querySelector("#idInput").value);
+
+  let owner = document.querySelector("#ownerInput").value.trim();
+  if (owner === "") {
+    owner = null;
+  }
+
+  const title = document.querySelector("#titleInput").value.trim();
+  const severity = Number(document.querySelector("#severityInput").value);
+  const status = document.querySelector("#statusInput").value;
+  const hours = Number(document.querySelector("#hoursInput").value);
+  const vip = document.querySelector("#vipInput").checked;
+  const blocked = document.querySelector("#blockedInput").checked;
+
+  if (id === 0) {
+    tickets.push({
+      id: getNextId(),
+      title: title,
+      severity: severity,
+      status: status,
+      owner: owner,
+      remainingHours: hours,
+      customerVip: vip,
+      blocked: blocked,
+    });
+  } else {
+    const ticket = findTicketById(tickets, id);
+    ticket.title = title;
+    ticket.severity = severity;
+    ticket.status = status;
+    ticket.owner = owner;
+    ticket.remainingHours = hours;
+    ticket.customerVip = vip;
+    ticket.blocked = blocked;
+  }
+}
+
+function fillForm(ticket) {
+  document.querySelector("#idInput").value = ticket.id;
+  document.querySelector("#titleInput").value = ticket.title;
+  document.querySelector("#severityInput").value = ticket.severity;
+  document.querySelector("#statusInput").value = ticket.status;
+  document.querySelector("#ownerInput").value = ticket.owner ?? "";
+  document.querySelector("#hoursInput").value = ticket.remainingHours;
+  document.querySelector("#vipInput").checked = ticket.customerVip;
+  document.querySelector("#blockedInput").checked = ticket.blocked;
+  document.querySelector("#ticketForm button[type=submit]").textContent =
+    "Update ticket #" + ticket.id;
+  document.querySelector("#titleInput").focus();
+}
+
+function deleteTicket(id) {
+  if (!confirm("Delete ticket #" + id + "?")) {
+    return;
+  }
+  tickets = tickets.filter((t) => t.id !== id);
+  saveTickets();
+  refresh();
+}
+
+function setupForm() {
+  document.querySelector("#ticketForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    saveFromForm();
+    saveTickets();
+    clearForm();
+    refresh();
+  });
+
+  document.querySelector("#cancelBtn").addEventListener("click", clearForm);
+
+  document.querySelector("#ticketList").addEventListener("click", (e) => {
+    const action = e.target.dataset.action;
+    const id = Number(e.target.dataset.id);
+
+    if (action === "delete") {
+      deleteTicket(id);
+    } else if (action === "edit") {
+      fillForm(findTicketById(tickets, id));
+    }
   });
 }
 
+//////////////////////////////////////////////////////////////////////////////
+
 function init() {
-  renderSummary(createReport(tickets).summary);
-  renderTickets(classifyTickets(tickets));
+  refresh();
+  setupForm();
   setupSearch();
 }
 init();
-
-//////////////////////////////////////////////////////////////////////////////
