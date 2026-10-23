@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Release Decision System</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="script.js" defer></script>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="pageHeader">
+        <div>
+          <h1>Release decision</h1>
+        </div>
+      </header>
+      <section id="summary"></section>
+      <form id="ticketForm">
+        <input type="hidden" id="idInput" />
+
+        <label
+          >Title
+          <input id="titleInput" required />
+        </label>
+
+        <label
+          >Severity (1-5)
+          <select id="severityInput">
+            <option>1</option>
+            <option>2</option>
+            <option>3</option>
+            <option>4</option>
+            <option>5</option>
+          </select>
+        </label>
+
+        <label
+          >Status
+          <select id="statusInput">
+            <option>open</option>
+            <option>testing</option>
+            <option>done</option>
+          </select>
+        </label>
+
+        <label
+          >Owner (empty = unassigned)
+          <input id="ownerInput" />
+        </label>
+
+        <label
+          >Remaining hours
+          <input id="hoursInput" type="number" min="0" value="1" />
+        </label>
+
+        <div class="checks">
+          <label class="check"
+            ><input id="vipInput" type="checkbox" /> VIP customer</label
+          >
+          <label class="check"
+            ><input id="blockedInput" type="checkbox" /> Blocked</label
+          >
+        </div>
+
+        <div class="formActions">
+          <button type="submit">Save ticket</button>
+          <button type="button" id="cancelBtn">Cancel</button>
+        </div>
+      </form>
+      <input
+        id="searchInput"
+        type="search"
+        placeholder="Search by ID (e.g. 101)"
+      />
+      <section id="ticketList"></section>
+
+      <footer>
+        What are you doing down here?
+      </footer>
+    </main>
+  </body>
+</html>

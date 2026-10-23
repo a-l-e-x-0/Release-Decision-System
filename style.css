@@ -1,0 +1,189 @@
+:root {
+  --color-background: #0b1020;
+  --color-foreground: #f8fafc;
+  --color-muted: #94a3b8;
+  --color-border: #273449;
+  --color-accent: #c084fc;
+  --color-button: #161c56;
+  --color-button-hover: #161ca1;
+  --badge-active: #6ac76e;
+  --badge-release-blocker: #ee7272;
+  --badge-priority: #f4d35e;
+  --badge-unassigned: #226a9a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--color-foreground);
+  background: var(--color-background);
+}
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+footer {
+  margin-top: auto;
+  padding-top: 24px;
+  font-size: 0.85rem;
+  text-align: center;
+  color: var(--color-muted);
+}
+
+#summary {
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+#summary h2 {
+  margin: 0 0 12px;
+  color: var(--color-foreground);
+}
+
+#summary p {
+  margin: 4px 0;
+}
+
+#ticketList {
+  margin-top: 16px;
+  display: grid;
+  gap: 8px;
+}
+
+.ticket {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.ticketMain {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ticketMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+.ticketActions {
+  display: flex;
+  gap: 8px;
+}
+
+button {
+  padding: 8px 12px;
+  border: 1px solid var(--color-button);
+  border-radius: 6px;
+  color: var(--color-foreground);
+  background: var(--color-button);
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: var(--color-button-hover);
+  background: var(--color-button-hover);
+}
+
+.badge {
+  width: fit-content;
+  font-size: 0.8rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: var(--color-foreground);
+  background: var(--color-accent);
+}
+
+#ticketForm {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+#ticketForm label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+#ticketForm label.check {
+  display: flex;
+  align-items: center;
+}
+
+.checks {
+  display: flex;
+  gap: 16px;
+  align-self: end;
+  padding: 8px 0;
+}
+
+#ticketForm input:not([type="checkbox"]),
+#ticketForm select {
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-foreground);
+  background: transparent;
+}
+
+#ticketForm select option {
+  color: var(--color-background);
+}
+
+.formActions {
+  display: flex;
+  gap: 8px;
+}
+
+.ticket--release_blocker .badge {
+  background: var(--badge-release-blocker);
+}
+
+.ticket--priority .badge {
+  background: var(--badge-priority);
+}
+
+.ticket--active .badge {
+  background: var(--badge-active);
+}
+
+.ticket--unassigned .badge {
+  background: var(--badge-unassigned);
+}
+
+.ticket--done {
+  opacity: 0.6;
+}
+
+#searchInput {
+  width: 100%;
+  margin-top: 16px;
+  padding: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-foreground);
+  background: transparent;
+}
