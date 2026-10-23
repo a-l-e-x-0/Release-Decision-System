@@ -1,29 +1,47 @@
-type TicketStatus = "open" | "testing" | "done";
-type TicketClassification =
+type Status = "open" | "testing" | "done";
+
+type Classification =
   | "RELEASE_BLOCKER"
   | "PRIORITY"
   | "UNASSIGNED"
   | "ACTIVE"
   | "DONE";
-type ReleaseDecision = "BLOCK" | "REVIEW" | "RELEASE";
+
+type Decision = "BLOCK" | "REVIEW" | "RELEASE";
 
 type Ticket = {
   id: number;
   title: string;
   severity: number;
-  status: TicketStatus;
+  status: Status;
   owner: string | null;
   remainingHours: number;
   customerVip: boolean;
   blocked: boolean;
 };
 
-type ClassifiedTicket = Ticket & { classification: TicketClassification };
-type TicketCounters = Record<TicketClassification, number>;
+type ClassifiedTicket = Ticket & { classification: Classification };
 
-const storageKey = "releaseDecisionTickets";
+type ReportTicket = {
+  id: number;
+  title: string;
+  owner: string;
+  classification: Classification;
+};
 
-const tickets: Ticket[] = [
+type Counters = Record<Classification, number>;
+
+type Summary = Counters & {
+  activeHours: number;
+  decision: Decision;
+};
+
+type ReleaseReport = {
+  summary: Summary;
+  attentionTickets: ReportTicket[];
+};
+
+const defaultTickets: Ticket[] = [
   {
     id: 101,
     title: "Login outage",
@@ -147,10 +165,9 @@ const tickets: Ticket[] = [
 ];
 
 function classifyTickets(tickets: Ticket[]): ClassifiedTicket[] {
-  return tickets.map((ticket) => {
+  return tickets.map((ticket): ClassifiedTicket => {
     if (ticket.status !== "done") {
-      let classification: TicketClassification;
-
+      let classification: Classification;
       if (ticket.blocked && ticket.severity >= 4) {
         classification = "RELEASE_BLOCKER";
       } else if (ticket.status === "open" && ticket.severity === 5) {
@@ -162,7 +179,7 @@ function classifyTickets(tickets: Ticket[]): ClassifiedTicket[] {
       } else {
         classification = "ACTIVE";
       }
-
+      
       return {
         ...ticket,
         classification,
@@ -175,20 +192,13 @@ function classifyTickets(tickets: Ticket[]): ClassifiedTicket[] {
     }
   });
 }
-// console.log(tickets);
-console.log(classifyTickets(tickets));
 
 //////////////////////////////////////////////////////////////////////////////
-console.log("");
-console.log("FIND TICKETS:");
-function findTicketById<T extends Ticket>(tickets: T[], id: number): T | null {
+function findTicketById(tickets: Ticket[], id: number): Ticket | null {
   return tickets.find((ticket) => ticket.id === id) || null;
 }
-console.log(findTicketById(tickets, 102));
 
 //////////////////////////////////////////////////////////////////////////////
-console.log("");
-console.log("ATTENTION:");
 function getAttentionTickets(tickets: ClassifiedTicket[]): ClassifiedTicket[] {
   return tickets.filter(
     (ticket) =>
@@ -197,12 +207,9 @@ function getAttentionTickets(tickets: ClassifiedTicket[]): ClassifiedTicket[] {
       ticket.classification === "UNASSIGNED",
   );
 }
-console.log(getAttentionTickets(classifyTickets(tickets)));
 
 //////////////////////////////////////////////////////////////////////////////
-console.log("");
-console.log("REPORT REPRESENTATION:");
-function toReportTickets(classifiedTickets: ClassifiedTicket[]) {
+function toReportTickets(classifiedTickets: ClassifiedTicket[]): ReportTicket[] {
   return classifiedTickets.map((ticket) => ({
     id: ticket.id,
     title: ticket.title,
@@ -210,13 +217,13 @@ function toReportTickets(classifiedTickets: ClassifiedTicket[]) {
     classification: ticket.classification,
   }));
 }
-console.log(toReportTickets(classifyTickets(tickets)));
 
 //////////////////////////////////////////////////////////////////////////////
-console.log("");
-console.log("COUNTERS AND HOURS:");
-function calculateCountersAndHours(classifiedTickets: ClassifiedTicket[]) {
-  const counters: TicketCounters = {
+function calculateCountersAndHours(classifiedTickets: ClassifiedTicket[]): {
+  counters: Counters;
+  activeHours: number;
+} {
+  const counters: Counters = {
     RELEASE_BLOCKER: 0,
     PRIORITY: 0,
     UNASSIGNED: 0,
@@ -224,25 +231,17 @@ function calculateCountersAndHours(classifiedTickets: ClassifiedTicket[]) {
     DONE: 0,
   };
   let activeHours = 0;
-
   for (const ticket of classifiedTickets) {
     counters[ticket.classification]++;
-
     if (ticket.status !== "done") {
       activeHours += ticket.remainingHours;
     }
   }
   return { counters, activeHours };
 }
-console.log(calculateCountersAndHours(classifyTickets(tickets)));
 
 //////////////////////////////////////////////////////////////////////////////
-console.log("");
-console.log("DECIDE RELEASE:");
-function decideRelease(
-  counters: TicketCounters,
-  activeHours: number,
-): ReleaseDecision {
+function decideRelease(counters: Counters, activeHours: number): Decision {
   if (counters.RELEASE_BLOCKER > 0) {
     return "BLOCK";
   } else if (counters.UNASSIGNED > 0 || activeHours > 35) {
@@ -250,466 +249,275 @@ function decideRelease(
   }
   return "RELEASE";
 }
-const { counters, activeHours } = calculateCountersAndHours(
-  classifyTickets(tickets),
-);
-console.log(decideRelease(counters, activeHours));
 
 //////////////////////////////////////////////////////////////////////////////
-console.log("");
-console.log("SUMMARY:");
-function createSummary(classifiedTickets: ClassifiedTicket[]) {
+function createSummary(classifiedTickets: ClassifiedTicket[]): Summary {
   const { counters, activeHours } =
     calculateCountersAndHours(classifiedTickets);
-
   return {
     ...counters,
     activeHours,
     decision: decideRelease(counters, activeHours),
   };
 }
-console.log(createSummary(classifyTickets(tickets)));
 
 //////////////////////////////////////////////////////////////////////////////
-console.log("");
-console.log("FINAL REPORT:");
-function createReport(tickets: Ticket[]) {
+function createReport(tickets: Ticket[]): ReleaseReport {
   const classifiedTickets = classifyTickets(tickets);
-
   return {
     summary: createSummary(classifiedTickets),
     attentionTickets: toReportTickets(getAttentionTickets(classifiedTickets)),
   };
 }
-console.log(createReport(tickets));
 
-//Display and interaction////////////////////////////////
-let pageTickets = classifyTickets(tickets);
-let pageSummary = calculateCountersAndHours(pageTickets);
-let releaseDecision = decideRelease(
-  pageSummary.counters,
-  pageSummary.activeHours,
-);
-function requireElement<T extends HTMLElement>(selector: string): T {
-  const element = document.querySelector<T>(selector);
-  if (!element) {
-    throw new Error(`Required page element "${selector}" was not found.`);
-  }
-  return element;
+//////////////////////////////////////////////////////////////////////////////
+// function testFunctions() {
+//   console.log("TESTING");
+//   console.log(classifyTickets(tickets));
+//   console.log("");
+//   console.log("FIND TICKETS:");
+//   console.log(findTicketById(tickets, 102));
+//   console.log("");
+//   console.log("ATTENTION:");
+//   console.log(getAttentionTickets(classifyTickets(tickets)));
+//   console.log("");
+//   console.log("REPORT REPRESENTATION:");
+//   console.log(toReportTickets(classifyTickets(tickets)));
+//   console.log("");
+//   console.log("COUNTERS AND HOURS:");
+//   console.log(calculateCountersAndHours(classifyTickets(tickets)));
+//   console.log("");
+//   console.log("DECIDE RELEASE:");
+//   const { counters, activeHours } = calculateCountersAndHours(
+//     classifyTickets(tickets),
+//   );
+//   console.log(decideRelease(counters, activeHours));
+//   console.log("");
+//   console.log("SUMMARY:");
+//   console.log(createSummary(classifyTickets(tickets)));
+//   console.log("");
+//   console.log("FINAL REPORT:");
+//   console.log(createReport(tickets));
+// }
+// testFunctions();
+
+// Everything below this is for DOM manipulation and such
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+
+const STORAGE_KEY = "tickets";
+let tickets: Ticket[] = loadTickets();
+
+function loadTickets(): Ticket[] {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch {}
+  const fresh = structuredClone(defaultTickets);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(fresh));
+  return fresh;
 }
 
-const ticketList = requireElement<HTMLDivElement>("#ticket-list");
-const analysis = requireElement<HTMLElement>("#ticket-analysis");
-const searchForm = requireElement<HTMLFormElement>("#ticket-search");
-const searchInput = requireElement<HTMLInputElement>("#ticket-id");
-const searchMessage = requireElement<HTMLParagraphElement>("#search-message");
-const ticketCount = requireElement<HTMLParagraphElement>("#ticket-count");
-const summaryGrid = requireElement<HTMLDivElement>("#summary-grid");
-const decisionElement = requireElement<HTMLDivElement>("#release-decision");
+function saveTickets(): void {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets));
+}
 
-function isTicketArray(value: unknown): value is Ticket[] {
-  if (!Array.isArray(value)) return false;
+function renderSummary(summary: Summary): void {
+  document.querySelector("#summary")!.innerHTML = `
+    <h2> Decision: ${summary.decision}</h2>
+    <p>Blockers: ${summary.RELEASE_BLOCKER}</p>
+    <p>Priority: ${summary.PRIORITY}</p>
+    <p>Unassigned: ${summary.UNASSIGNED}</p>
+    <p>Active: ${summary.ACTIVE}</p>
+    <p>Done: ${summary.DONE}</p>
+    <p>Hours left: ${summary.activeHours}</p>
+  `;
+}
 
-  return value.every((ticket: unknown) => {
-    if (typeof ticket !== "object" || ticket === null) return false;
+function renderTickets(tickets: ClassifiedTicket[]): void {
+  const container = document.querySelector("#ticketList")!;
 
-    const item = ticket as Record<string, unknown>;
+  if (tickets.length === 0) {
+    container.innerHTML = "<p>No tickets found.</p>";
+    return;
+  }
 
-    return (
-      Number.isInteger(item.id) &&
-      (item.id as number) > 0 &&
-      typeof item.title === "string" &&
-      item.title.trim().length > 0 &&
-      Number.isInteger(item.severity) &&
-      (item.severity as number) >= 1 &&
-      (item.severity as number) <= 5 &&
-      ["open", "testing", "done"].includes(String(item.status)) &&
-      (typeof item.owner === "string" || item.owner === null) &&
-      typeof item.remainingHours === "number" &&
-      Number.isFinite(item.remainingHours) &&
-      item.remainingHours >= 0 &&
-      typeof item.customerVip === "boolean" &&
-      typeof item.blocked === "boolean"
-    );
+  container.innerHTML = tickets
+    .map(
+      (t) => `
+      <article class="ticket ticket--${t.classification.toLowerCase()}">
+        <div class="ticketMain">
+            <strong>#${t.id} ${t.title}</strong>
+            <span class="badge">${t.classification}</span>
+        </div>
+        <div class="ticketMeta">
+            <span>Owner: ${t.owner ?? "Unassigned"}</span>
+            <span>Severity: ${t.severity}</span>
+            <span>Status: ${t.status}</span>
+            <span>Hours: ${t.remainingHours}</span>
+            <span>VIP: ${t.customerVip ? "Yes" : "No"}</span>
+            <span>Blocked: ${t.blocked ? "Yes" : "No"}</span>
+        </div>
+        <div class="ticketActions">
+            <button data-action="edit" data-id="${t.id}">Edit</button>
+            <button data-action="delete" data-id="${t.id}">Delete</button>
+        </div>
+      </article>`,
+    )
+    .join("");
+}
+
+function applySearch(): void {
+  const all = classifyTickets(tickets);
+  const query = (
+    document.querySelector("#searchInput") as HTMLInputElement
+  ).value.trim();
+  if (query === "") return renderTickets(all);
+  const ticket = findTicketById(all, Number(query)) as ClassifiedTicket | null;
+  renderTickets(ticket ? [ticket] : []);
+}
+
+function setupSearch(): void {
+  document
+    .querySelector("#searchInput")!
+    .addEventListener("input", applySearch);
+}
+
+function refresh(): void {
+  renderSummary(createReport(tickets).summary);
+  applySearch();
+}
+
+//////////////////////////////////////////////////////////////////////////////
+function clearForm(): void {
+  (document.querySelector("#ticketForm") as HTMLFormElement).reset();
+  (document.querySelector("#idInput") as HTMLInputElement).value = "";
+  document.querySelector("#ticketForm button[type=submit]")!.textContent =
+    "Save ticket";
+}
+
+function getNextId(): number {
+  let highest = 0;
+  for (const t of tickets) {
+    if (t.id > highest) {
+      highest = t.id;
+    }
+  }
+  return highest + 1;
+}
+
+function saveFromForm(): void {
+  const id = Number((document.querySelector("#idInput") as HTMLInputElement).value);
+
+  let owner: string | null = (
+    document.querySelector("#ownerInput") as HTMLInputElement
+  ).value.trim();
+  if (owner === "") {
+    owner = null;
+  }
+
+  const title = (
+    document.querySelector("#titleInput") as HTMLInputElement
+  ).value.trim();
+  const severity = Number(
+    (document.querySelector("#severityInput") as HTMLSelectElement).value,
+  );
+  const status = (document.querySelector("#statusInput") as HTMLSelectElement)
+    .value as Status;
+  const hours = Number(
+    (document.querySelector("#hoursInput") as HTMLInputElement).value,
+  );
+  const vip = (document.querySelector("#vipInput") as HTMLInputElement).checked;
+  const blocked = (document.querySelector("#blockedInput") as HTMLInputElement)
+    .checked;
+
+  if (id === 0) {
+    tickets.push({
+      id: getNextId(),
+      title: title,
+      severity: severity,
+      status: status,
+      owner: owner,
+      remainingHours: hours,
+      customerVip: vip,
+      blocked: blocked,
+    });
+  } else {
+    const ticket = findTicketById(tickets, id)!;
+    ticket.title = title;
+    ticket.severity = severity;
+    ticket.status = status;
+    ticket.owner = owner;
+    ticket.remainingHours = hours;
+    ticket.customerVip = vip;
+    ticket.blocked = blocked;
+  }
+}
+
+function fillForm(ticket: Ticket): void {
+  (document.querySelector("#idInput") as HTMLInputElement).value = String(
+    ticket.id,
+  );
+  (document.querySelector("#titleInput") as HTMLInputElement).value =
+    ticket.title;
+  (document.querySelector("#severityInput") as HTMLSelectElement).value =
+    String(ticket.severity);
+  (document.querySelector("#statusInput") as HTMLSelectElement).value =
+    ticket.status;
+  (document.querySelector("#ownerInput") as HTMLInputElement).value =
+    ticket.owner ?? "";
+  (document.querySelector("#hoursInput") as HTMLInputElement).value = String(
+    ticket.remainingHours,
+  );
+  (document.querySelector("#vipInput") as HTMLInputElement).checked =
+    ticket.customerVip;
+  (document.querySelector("#blockedInput") as HTMLInputElement).checked =
+    ticket.blocked;
+  document.querySelector("#ticketForm button[type=submit]")!.textContent =
+    "Update ticket #" + ticket.id;
+  (document.querySelector("#titleInput") as HTMLInputElement).focus();
+}
+
+function deleteTicket(id: number): void {
+  if (!confirm("Delete ticket #" + id + "?")) {
+    return;
+  }
+  tickets = tickets.filter((t) => t.id !== id);
+  saveTickets();
+  refresh();
+}
+
+function setupForm(): void {
+  document.querySelector("#ticketForm")!.addEventListener("submit", (e) => {
+    e.preventDefault();
+    saveFromForm();
+    saveTickets();
+    clearForm();
+    refresh();
+  });
+
+  document.querySelector("#cancelBtn")!.addEventListener("click", clearForm);
+
+  document.querySelector("#ticketList")!.addEventListener("click", (e) => {
+    const target = e.target as HTMLElement;
+    const action = target.dataset.action;
+    const id = Number(target.dataset.id);
+
+    if (action === "delete") {
+      deleteTicket(id);
+    } else if (action === "edit") {
+      fillForm(findTicketById(tickets, id)!);
+    }
   });
 }
 
-try {
-  const savedTickets = localStorage.getItem(storageKey);
+//////////////////////////////////////////////////////////////////////////////
 
-  if (savedTickets !== null) {
-    const parsed: unknown = JSON.parse(savedTickets);
-
-    if (isTicketArray(parsed)) {
-      tickets.splice(0, tickets.length, ...parsed);
-    } else {
-      console.error("Saved tickets were invalid. Using default tickets.");
-    }
-  } else {
-    localStorage.setItem(storageKey, JSON.stringify(tickets));
-  }
-} catch (error) {
-  console.error("Could not load saved tickets:", error);
+function init(): void {
+  refresh();
+  setupForm();
+  setupSearch();
 }
-
-function saveTickets() {
-  try {
-    localStorage.setItem(storageKey, JSON.stringify(tickets));
-    return true;
-  } catch (error) {
-    console.error("Could not save tickets:", error);
-    alert("Tickets could not be saved in this browser.");
-    return false;
-  }
-}
-
-const formContainer = document.createElement("div");
-formContainer.id = "ticket-form-container";
-ticketList.before(formContainer);
-
-formContainer.innerHTML = `
-  <h3 id="editor-heading">Add ticket</h3>
-  <form id="ticket-editor">
-    <label for="edit-title">Title</label>
-    <input id="edit-title" name="title" required>
-
-    <label for="edit-severity">Severity (1-5)</label>
-    <input id="edit-severity" name="severity" type="number" min="1" max="5" step="1" required>
-
-    <label for="edit-status">Status</label>
-    <select id="edit-status" name="status">
-      <option value="open">Open</option>
-      <option value="testing">Testing</option>
-      <option value="done">Done</option>
-    </select>
-
-    <label for="edit-owner">Owner</label>
-    <input id="edit-owner" name="owner" placeholder="Leave empty if unassigned">
-
-    <label for="edit-hours">Remaining hours</label>
-    <input id="edit-hours" name="remainingHours" type="number" min="0" step="any" required>
-
-    <label class="checkbox-label">
-      <input name="customerVip" type="checkbox">
-      VIP customer
-    </label>
-
-    <label class="checkbox-label">
-      <input name="blocked" type="checkbox">
-      Blocked
-    </label>
-
-    <div class="form-buttons">
-      <button type="submit" id="save-ticket">Add ticket</button>
-      <button type="button" id="cancel-edit" hidden>Cancel</button>
-    </div>
-
-    <p id="editor-message" aria-live="polite"></p>
-  </form>
-`;
-
-const ticketEditor = requireElement<HTMLFormElement>("#ticket-editor");
-const editorHeading = requireElement<HTMLHeadingElement>("#editor-heading");
-const editorMessage = requireElement<HTMLParagraphElement>("#editor-message");
-const saveButton = requireElement<HTMLButtonElement>("#save-ticket");
-const cancelButton = requireElement<HTMLButtonElement>("#cancel-edit");
-
-let selectedTicketId: number | null = tickets[0]?.id ?? null;
-
-function showSummary() {
-  const counts = pageSummary.counters;
-  const cards: [string, string | number][] = [
-    ["Blockers", counts.RELEASE_BLOCKER],
-    ["Priority", counts.PRIORITY],
-    ["Unassigned", counts.UNASSIGNED],
-    ["Active", counts.ACTIVE],
-    ["Done", counts.DONE],
-    ["Active hours", `${pageSummary.activeHours}h`],
-  ];
-
-  ticketCount.textContent = `${pageTickets.length} tickets analyzed`;
-  summaryGrid.innerHTML = cards
-    .map(
-      ([label, value]) => `
-      <div class="summary-card">
-        <span>${label}</span>
-        <strong>${value}</strong>
-      </div>`,
-    )
-    .join("");
-
-  decisionElement.textContent = releaseDecision;
-  decisionElement.className = `decision decision-${releaseDecision.toLowerCase()}`;
-}
-
-function showTickets(selectedId?: number) {
-  ticketList.innerHTML = pageTickets
-    .map(
-      (ticket) => `
-    <div class="ticket-row">
-      <button class="ticket ${ticket.id === selectedId ? "selected" : ""}" data-id="${ticket.id}" type="button">
-        <span>
-          <strong>${ticket.title}</strong>
-          <small>#${ticket.id} · ${ticket.status}</small>
-        </span>
-        <span class="tag">${ticket.classification}</span>
-      </button>
-      <button type="button" class="action-button" data-edit-id="${ticket.id}">Edit</button>
-      <button type="button" class="action-button remove-button" data-remove-id="${ticket.id}">Remove</button>
-    </div>`,
-    )
-    .join("");
-}
-
-function showTicketAnalysis(ticket: ClassifiedTicket) {
-  let decision = "Can be released";
-  let reason = "No blocking or review rule applies.";
-  let resultClass = "result-ready";
-
-  if (ticket.classification === "RELEASE_BLOCKER") {
-    decision = "Block release";
-    reason = "This ticket must be resolved before release.";
-    resultClass = "result-block";
-  } else if (ticket.classification === "PRIORITY") {
-    decision = "Needs review";
-    reason = "High-severity work for a VIP customer needs review.";
-    resultClass = "result-review";
-  } else if (ticket.classification === "UNASSIGNED") {
-    decision = "Needs review";
-    reason = "Assign an owner before release.";
-    resultClass = "result-review";
-  } else if (ticket.status === "done") {
-    reason = "This ticket is complete.";
-  }
-
-  analysis.innerHTML = `
-    <p class="overline">Selected ticket · #${ticket.id}</p>
-    <h2>${ticket.title}</h2>
-    <div class="result ${resultClass}">
-      <strong>${decision}</strong>
-      <p>${reason}</p>
-    </div>
-    <dl>
-      <dt>Status</dt><dd>${ticket.status}</dd>
-      <dt>Owner</dt><dd>${ticket.owner || "Unassigned"}</dd>
-      <dt>Severity</dt><dd>${ticket.severity} / 5</dd>
-      <dt>Remaining work</dt><dd>${ticket.remainingHours} hours</dd>
-      <dt>Blocked</dt><dd>${ticket.blocked ? "Yes" : "No"}</dd>
-      <dt>VIP customer</dt><dd>${ticket.customerVip ? "Yes" : "No"}</dd>
-    </dl>`;
-}
-
-function selectTicket(ticket: ClassifiedTicket) {
-  selectedTicketId = ticket.id;
-  showTickets(ticket.id);
-  showTicketAnalysis(ticket);
-  searchMessage.textContent = "";
-  searchInput.removeAttribute("aria-invalid");
-}
-
-function refreshPage() {
-  pageTickets = classifyTickets(tickets);
-  pageSummary = calculateCountersAndHours(pageTickets);
-  releaseDecision = decideRelease(
-    pageSummary.counters,
-    pageSummary.activeHours,
-  );
-
-  showSummary();
-  showTickets(selectedTicketId ?? undefined);
-
-  const selected = findTicketById(pageTickets, selectedTicketId ?? -1);
-
-  if (selected) {
-    showTicketAnalysis(selected);
-  } else if (pageTickets.length > 0) {
-    selectedTicketId = pageTickets[0].id;
-    showTicketAnalysis(pageTickets[0]);
-  } else {
-    selectedTicketId = null;
-    analysis.innerHTML = "<p>No tickets available.</p>";
-  }
-}
-
-function resetForm() {
-  ticketEditor.reset();
-  delete ticketEditor.dataset.editingId;
-  editorHeading.textContent = "Add ticket";
-  saveButton.textContent = "Add ticket";
-  cancelButton.hidden = true;
-  editorMessage.textContent = "";
-}
-
-function editTicket(id: number) {
-  const ticket = findTicketById(tickets, id);
-  if (!ticket) return;
-
-  selectedTicketId = id;
-
-  requireElement<HTMLInputElement>("#edit-title").value = ticket.title;
-  requireElement<HTMLInputElement>("#edit-severity").value = String(
-    ticket.severity,
-  );
-  requireElement<HTMLSelectElement>("#edit-status").value = ticket.status;
-  requireElement<HTMLInputElement>("#edit-owner").value = ticket.owner ?? "";
-  requireElement<HTMLInputElement>("#edit-hours").value = String(
-    ticket.remainingHours,
-  );
-
-  requireElement<HTMLInputElement>('[name="customerVip"]').checked =
-    ticket.customerVip;
-  requireElement<HTMLInputElement>('[name="blocked"]').checked = ticket.blocked;
-
-  ticketEditor.dataset.editingId = String(id);
-  editorHeading.textContent = `Edit ticket #${id}`;
-  saveButton.textContent = "Save changes";
-  cancelButton.hidden = false;
-  editorMessage.textContent = "";
-
-  refreshPage();
-  formContainer.scrollIntoView({ behavior: "smooth" });
-}
-
-ticketEditor.addEventListener("submit", (event) => {
-  event.preventDefault();
-
-  const formData = new FormData(ticketEditor);
-  const title = String(formData.get("title")).trim();
-  const severity = Number(formData.get("severity"));
-  const status = String(formData.get("status"));
-  const owner = String(formData.get("owner")).trim();
-  const remainingHours = Number(formData.get("remainingHours"));
-
-  if (
-    !title ||
-    !Number.isInteger(severity) ||
-    severity < 1 ||
-    severity > 5 ||
-    !["open", "testing", "done"].includes(status) ||
-    !Number.isFinite(remainingHours) ||
-    remainingHours < 0
-  ) {
-    editorMessage.textContent = "Enter valid ticket details.";
-    return;
-  }
-
-  const editingId = ticketEditor.dataset.editingId;
-
-  if (editingId !== undefined) {
-    const ticket = findTicketById(tickets, Number(editingId));
-
-    if (!ticket) {
-      editorMessage.textContent = "Ticket not found.";
-      return;
-    }
-
-    const oldTicket = { ...ticket };
-
-    ticket.title = title;
-    ticket.severity = severity;
-    ticket.status = status as TicketStatus;
-    ticket.owner = owner || null;
-    ticket.remainingHours = remainingHours;
-    ticket.customerVip = formData.has("customerVip");
-    ticket.blocked = formData.has("blocked");
-
-    if (!saveTickets()) {
-      Object.assign(ticket, oldTicket);
-      return;
-    }
-
-    selectedTicketId = ticket.id;
-  } else {
-    const newId = Math.max(100, ...tickets.map((ticket) => ticket.id)) + 1;
-
-    tickets.push({
-      id: newId,
-      title,
-      severity,
-      status: status as TicketStatus,
-      owner: owner || null,
-      remainingHours,
-      customerVip: formData.has("customerVip"),
-      blocked: formData.has("blocked"),
-    });
-
-    if (!saveTickets()) {
-      tickets.pop();
-      return;
-    }
-
-    selectedTicketId = newId;
-  }
-
-  resetForm();
-  refreshPage();
-});
-
-cancelButton.addEventListener("click", resetForm);
-
-ticketList.addEventListener("click", (event) => {
-  if (!(event.target instanceof Element)) return;
-
-  const editButton = event.target.closest<HTMLButtonElement>("[data-edit-id]");
-  const removeButton =
-    event.target.closest<HTMLButtonElement>("[data-remove-id]");
-
-  if (editButton) {
-    editTicket(Number(editButton.dataset.editId));
-    return;
-  }
-
-  if (removeButton) {
-    const id = Number(removeButton.dataset.removeId);
-    const ticket = findTicketById(tickets, id);
-
-    if (!ticket || !confirm(`Remove ticket #${id}: ${ticket.title}?`)) {
-      return;
-    }
-
-    const index = tickets.findIndex((item) => item.id === id);
-    const [removedTicket] = tickets.splice(index, 1);
-
-    if (!saveTickets()) {
-      tickets.splice(index, 0, removedTicket);
-      return;
-    }
-
-    if (selectedTicketId === id) {
-      selectedTicketId = tickets[0]?.id ?? null;
-    }
-
-    if (ticketEditor.dataset.editingId === String(id)) {
-      resetForm();
-    }
-
-    refreshPage();
-  }
-});
-
-ticketList.addEventListener("click", (event) => {
-  if (!(event.target instanceof Element)) return;
-  const button = event.target.closest<HTMLButtonElement>("[data-id]");
-  if (!button) return;
-
-  const ticket = findTicketById(pageTickets, Number(button.dataset.id));
-  if (ticket) selectTicket(ticket);
-});
-
-searchForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  const id = Number(searchInput.value.trim());
-  const ticket = findTicketById(pageTickets, id);
-
-  if (!searchInput.value.trim() || !ticket) {
-    searchMessage.textContent = `No ticket found with ID "${searchInput.value.trim()}".`;
-    searchInput.setAttribute("aria-invalid", "true");
-    return;
-  }
-
-  selectTicket(ticket);
-});
-
-showSummary();
-showTickets();
-showTicketAnalysis(pageTickets[0]);
+init();

@@ -1,13 +1,15 @@
 :root {
-  --color-taupe-dusty: #93827f;
-  --color-cream: #f3f9d2;
-  --color-sage: #bdc4a7;
-  --color-graphite: #2f2f2f;
-  --color-teal-muted: #92b4a7;
-  --badge-active: #a3d9a5;
-  --badge-release-blocker: #ef9a9a;
+  --color-background: #0b1020;
+  --color-foreground: #f8fafc;
+  --color-muted: #94a3b8;
+  --color-border: #273449;
+  --color-accent: #c084fc;
+  --color-button: #161c56;
+  --color-button-hover: #161ca1;
+  --badge-active: #6ac76e;
+  --badge-release-blocker: #ee7272;
   --badge-priority: #f4d35e;
-  --badge-unassigned: #9cc9e8;
+  --badge-unassigned: #226a9a;
 }
 
 * {
@@ -17,8 +19,8 @@
 body {
   margin: 0;
   min-height: 100vh;
-  color: var(--color-cream);
-  background: var(--color-graphite);
+  color: var(--color-foreground);
+  background: var(--color-background);
 }
 
 .shell {
@@ -35,18 +37,18 @@ footer {
   padding-top: 24px;
   font-size: 0.85rem;
   text-align: center;
-  color: var(--color-sage);
+  color: var(--color-muted);
 }
 
 #summary {
   padding: 16px;
-  border: 1px solid var(--color-sage);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
 }
 
 #summary h2 {
   margin: 0 0 12px;
-  color: var(--color-cream);
+  color: var(--color-foreground);
 }
 
 #summary p {
@@ -63,7 +65,7 @@ footer {
   display: grid;
   gap: 8px;
   padding: 12px;
-  border: 1px solid var(--color-sage);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
 }
 
@@ -78,7 +80,7 @@ footer {
   flex-wrap: wrap;
   gap: 4px 16px;
   font-size: 0.85rem;
-  color: var(--color-sage);
+  color: var(--color-muted);
 }
 
 .ticketActions {
@@ -86,13 +88,27 @@ footer {
   gap: 8px;
 }
 
+button {
+  padding: 8px 12px;
+  border: 1px solid var(--color-button);
+  border-radius: 6px;
+  color: var(--color-foreground);
+  background: var(--color-button);
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: var(--color-button-hover);
+  background: var(--color-button-hover);
+}
+
 .badge {
   width: fit-content;
   font-size: 0.8rem;
   padding: 2px 8px;
   border-radius: 999px;
-  color: var(--color-graphite);
-  background: var(--color-sage);
+  color: var(--color-foreground);
+  background: var(--color-accent);
 }
 
 #ticketForm {
@@ -101,7 +117,7 @@ footer {
   gap: 12px;
   margin-top: 16px;
   padding: 16px;
-  border: 1px solid var(--color-sage);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
 }
 
@@ -109,7 +125,7 @@ footer {
   display: grid;
   gap: 4px;
   font-size: 0.85rem;
-  color: var(--color-sage);
+  color: var(--color-muted);
 }
 
 #ticketForm label.check {
@@ -127,14 +143,14 @@ footer {
 #ticketForm input:not([type="checkbox"]),
 #ticketForm select {
   padding: 8px;
-  border: 1px solid var(--color-sage);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  color: var(--color-cream);
+  color: var(--color-foreground);
   background: transparent;
 }
 
 #ticketForm select option {
-  color: var(--color-graphite);
+  color: var(--color-background);
 }
 
 .formActions {
@@ -166,8 +182,8 @@ footer {
   width: 100%;
   margin-top: 16px;
   padding: 10px;
-  border: 1px solid var(--color-sage);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  color: var(--color-cream);
+  color: var(--color-foreground);
   background: transparent;
 }
